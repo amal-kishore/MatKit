@@ -1,0 +1,41 @@
+import pandas as pd
+import matplotlib.pyplot as plt
+from matkit.data import fetch_data
+from matkit.utils import filter_dataframe
+from matkit.featurize import generate_features
+from matkit.ml import train_model, evaluate_model, get_feature_importance
+from sklearn.model_selection import train_test_split
+
+
+df_raw = fetch_data(stoichiometry='ABC', sources=['materials_project'], save=True, filename="abc_raw_data.csv")
+df_raw.head()
+
+
+df_clean = filter_dataframe(df_raw, min_elements=3, max_elements=3, remove_duplicates=True)
+df_clean.to_csv("abc_clean_data.csv", index=False)
+df_clean.head()
+
+
+df_feat = generate_features(df_clean, featureset='composition', save=True, filename="abc_features.csv")
+df_feat.head()
+
+
+X = df_feat.drop(columns=['target'])
+y = df_feat['target']
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+
+
+model = train_model(X_train, y_train, model_type='RandomForest')
+results = evaluate_model(model, X_test, y_test)
+results
+
+
+model, importances = get_feature_importance(X_train, y_train, model_type='RandomForest')
+imp_df = pd.DataFrame({'Feature': X_train.columns, 'Importance': importances})
+imp_df.sort_values(by="Importance", ascending=False, inplace=True)
+imp_df.head(10)
+
+imp_df.head(20).plot.bar(x='Feature', y='Importance', figsize=(10, 4), title="Top 20 Feature Importances")
+plt.tight_layout()
+plt.show()
+
